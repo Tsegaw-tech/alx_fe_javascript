@@ -4,13 +4,12 @@
    - JSON Import/Export
    - Category Filtering
    - Server Sync Simulation + Conflict Resolution
-   - Mock API POST for new quotes
 */
 
 const STORAGE_KEY = "dynamicQuotes_v3";
 const LAST_VIEWED_KEY = "lastViewedQuote_v3";
 const LAST_FILTER_KEY = "selectedCategory_v3";
-const SERVER_URL = "https://jsonplaceholder.typicode.com/posts"; // mock API endpoint
+const SERVER_URL = "https://jsonplaceholder.typicode.com/posts"; // mock API
 
 const defaultQuotes = [
   { id: 1, text: "The best way to predict the future is to create it.", category: "Motivation", updatedAt: Date.now() },
@@ -31,9 +30,7 @@ const quoteContainer = document.getElementById("quoteContainer");
 const exportBtn = document.getElementById("exportBtn");
 const importFileInput = document.getElementById("importFile");
 
-// -----------------------------
-// 🟢 Status Display
-// -----------------------------
+// Create sync status indicator
 function createSyncStatus() {
   syncStatusEl = document.createElement("div");
   syncStatusEl.id = "syncStatus";
@@ -49,9 +46,7 @@ function updateSyncStatus(message, color = "#555") {
   }
 }
 
-// -----------------------------
-// 💾 Local Storage Helpers
-// -----------------------------
+// LocalStorage Helpers
 function saveQuotes() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(quotes));
 }
@@ -72,9 +67,7 @@ function loadQuotes() {
   }
 }
 
-// -----------------------------
-// 🏷️ Category Handling
-// -----------------------------
+// Category Dropdown Handling
 function populateCategories() {
   const categories = [...new Set(quotes.map(q => q.category))].sort();
 
@@ -100,9 +93,7 @@ function populateCategories() {
   }
 }
 
-// -----------------------------
-// 💬 Display Quotes
-// -----------------------------
+// Display Quotes
 function displayQuotes(quotesToShow = quotes) {
   quoteContainer.innerHTML = "";
   if (quotesToShow.length === 0) {
@@ -120,9 +111,7 @@ function displayQuotes(quotesToShow = quotes) {
   });
 }
 
-// -----------------------------
-// 🎲 Random Quote
-// -----------------------------
+// Random Quote
 function showRandomQuote() {
   let filtered = quotes;
   const selectedCategory = categorySelect.value;
@@ -138,9 +127,7 @@ function showRandomQuote() {
   sessionStorage.setItem(LAST_VIEWED_KEY, JSON.stringify(random));
 }
 
-// -----------------------------
-// 🔍 Filter Quotes
-// -----------------------------
+// Filter Quotes
 function filterQuotes() {
   const selected = categoryFilter.value;
   localStorage.setItem(LAST_FILTER_KEY, selected);
@@ -149,9 +136,7 @@ function filterQuotes() {
   displayQuotes(filtered);
 }
 
-// -----------------------------
-// ➕ Add Quote
-// -----------------------------
+// Add Quote Form
 function createAddQuoteForm() {
   const form = document.createElement("div");
   form.className = "add-quote-form";
@@ -165,7 +150,7 @@ function createAddQuoteForm() {
   document.getElementById("addQuoteBtn").addEventListener("click", addQuote);
 }
 
-async function addQuote() {
+function addQuote() {
   const text = document.getElementById("newQuoteText").value.trim();
   const category = document.getElementById("newQuoteCategory").value.trim();
   if (!text || !category) return alert("Please fill both fields.");
@@ -175,29 +160,10 @@ async function addQuote() {
   saveQuotes();
   populateCategories();
   displayQuotes();
-
-  // 🛰️ Send to Mock API (POST)
-  try {
-    updateSyncStatus("Posting to server...", "blue");
-    const response = await fetch(SERVER_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newQuote),
-    });
-    const result = await response.json();
-    console.log("Posted to server:", result);
-    updateSyncStatus("Quote sent to server ✅", "green");
-  } catch (err) {
-    console.error("Error posting quote:", err);
-    updateSyncStatus("Failed to post ❌", "red");
-  }
-
-  alert("Quote added locally and sent to server!");
+  alert("Quote added locally!");
 }
 
-// -----------------------------
-// 📤 Export / Import
-// -----------------------------
+// Export/Import
 function exportToJson() {
   const data = JSON.stringify(quotes, null, 2);
   const blob = new Blob([data], { type: "application/json" });
@@ -230,13 +196,14 @@ function importFromJsonFile(event) {
 }
 
 // -----------------------------
-// 🛰️ Server Sync
+// 🛰️ Step 3: Syncing with Server
 // -----------------------------
 async function fetchQuotesFromServer() {
   try {
     const response = await fetch(SERVER_URL);
     const data = await response.json();
 
+    // Simulate converting server data to quote format
     const serverQuotes = data.slice(0, 5).map((p, i) => ({
       id: p.id,
       text: p.title,
@@ -246,13 +213,14 @@ async function fetchQuotesFromServer() {
 
     return serverQuotes;
   } catch (error) {
-    console.error("Error fetching quotes:", error);
+    console.error("Error fetching quotes from server:", error);
     return [];
   }
 }
 
-async function syncWithServer() {
-  updateSyncStatus("Syncing with server...", "blue");
+// Rename syncWithServer to syncQuotes
+async function syncQuotes() {
+  updateSyncStatus("Syncing...", "blue");
   try {
     const serverQuotes = await fetchQuotesFromServer();
 
@@ -261,7 +229,7 @@ async function syncWithServer() {
       const idx = quotes.findIndex(q => q.id === sq.id);
       if (idx >= 0) {
         quotes[idx] = sq;
-        console.warn("Conflict resolved (server wins):", sq);
+        console.warn("Conflict resolved: Server version replaced local version", sq);
       } else {
         quotes.push(sq);
       }
@@ -278,7 +246,7 @@ async function syncWithServer() {
 }
 
 // -----------------------------
-// 🚀 Initialization
+// Initialization
 // -----------------------------
 function init() {
   loadQuotes();
@@ -287,11 +255,13 @@ function init() {
   createSyncStatus();
   displayQuotes();
   showRandomQuote();
-  setInterval(syncWithServer, 30000); // auto-sync every 30s
+
+  // Periodic sync every 30 seconds
+  setInterval(syncQuotes, 30000);
 }
 
 // -----------------------------
-// 🎧 Event Listeners
+// Event Listeners
 // -----------------------------
 newQuoteBtn.addEventListener("click", showRandomQuote);
 exportBtn.addEventListener("click", exportToJson);
