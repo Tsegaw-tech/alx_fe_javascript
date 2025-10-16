@@ -3,15 +3,14 @@
    - LocalStorage & SessionStorage
    - JSON Import/Export
    - Category Filtering
-   - Server Sync + Conflict Resolution
+   - Server Sync Simulation + Conflict Resolution
 */
 
 const STORAGE_KEY = "dynamicQuotes_v4";
 const LAST_VIEWED_KEY = "lastViewedQuote_v4";
 const LAST_FILTER_KEY = "selectedCategory_v4";
-const SERVER_URL = "https://jsonplaceholder.typicode.com/posts"; // Mock API
+const SERVER_URL = "https://jsonplaceholder.typicode.com/posts"; // mock API
 
-// Default quotes if localStorage is empty
 const defaultQuotes = [
   { id: 1, text: "The best way to predict the future is to create it.", category: "Motivation", updatedAt: Date.now() },
   { id: 2, text: "Learning never exhausts the mind.", category: "Education", updatedAt: Date.now() },
@@ -73,7 +72,7 @@ function loadQuotes() {
 }
 
 // -----------------------------
-// Category Handling
+// Category Dropdown Handling
 // -----------------------------
 function populateCategories() {
   const categories = [...new Set(quotes.map(q => q.category))].sort();
@@ -101,7 +100,7 @@ function populateCategories() {
 }
 
 // -----------------------------
-// Display & Random Quote
+// Display Quotes
 // -----------------------------
 function displayQuotes(quotesToShow = quotes) {
   quoteContainer.innerHTML = "";
@@ -112,33 +111,40 @@ function displayQuotes(quotesToShow = quotes) {
   quotesToShow.forEach(q => {
     const div = document.createElement("div");
     div.className = "quote-item";
-    div.innerHTML = `<p>"${q.text}"</p><small>[${q.category}]</small>`;
+    div.innerHTML = `
+      <p>"${q.text}"</p>
+      <small>[${q.category}]</small>
+    `;
     quoteContainer.appendChild(div);
   });
 }
 
+// -----------------------------
+// Random Quote Display
+// -----------------------------
 function showRandomQuote() {
   let filtered = quotes;
   const selectedCategory = categorySelect.value;
-  if (selectedCategory !== "all") filtered = quotes.filter(q => q.category === selectedCategory);
-
+  if (selectedCategory !== "all") {
+    filtered = quotes.filter(q => q.category === selectedCategory);
+  }
   if (filtered.length === 0) {
     quoteDisplay.textContent = "No quotes found for this category.";
     return;
   }
-
   const random = filtered[Math.floor(Math.random() * filtered.length)];
   quoteDisplay.textContent = `"${random.text}" — [${random.category}]`;
   sessionStorage.setItem(LAST_VIEWED_KEY, JSON.stringify(random));
 }
 
 // -----------------------------
-// Filtering
+// Filter Quotes
 // -----------------------------
 function filterQuotes() {
   const selected = categoryFilter.value;
   localStorage.setItem(LAST_FILTER_KEY, selected);
-  const filtered = selected === "all" ? quotes : quotes.filter(q => q.category === selected);
+  const filtered =
+    selected === "all" ? quotes : quotes.filter(q => q.category === selected);
   displayQuotes(filtered);
 }
 
@@ -168,8 +174,8 @@ function addQuote() {
   saveQuotes();
   populateCategories();
   displayQuotes();
-  postQuoteToServer(newQuote); // Send new quote to server
-  alert("Quote added locally and sent to server!");
+  alert("Quote added locally!");
+  postQuoteToServer(newQuote); // post new quote to server
 }
 
 // -----------------------------
@@ -199,7 +205,7 @@ function importFromJsonFile(event) {
       populateCategories();
       displayQuotes();
       alert("Quotes imported successfully!");
-    } catch {
+    } catch (err) {
       alert("Error importing file.");
     }
   };
@@ -213,6 +219,8 @@ async function fetchQuotesFromServer() {
   try {
     const response = await fetch(SERVER_URL);
     const data = await response.json();
+
+    // Convert server data to quote format
     return data.slice(0, 5).map((p, i) => ({
       id: p.id,
       text: p.title,
@@ -220,37 +228,39 @@ async function fetchQuotesFromServer() {
       updatedAt: Date.now()
     }));
   } catch (err) {
-    console.error("Error fetching server data:", err);
+    console.error("Error fetching quotes from server:", err);
     return [];
   }
 }
 
-// POST new quote to server
 async function postQuoteToServer(quote) {
   try {
-    const res = await fetch(SERVER_URL, {
+    await fetch(SERVER_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(quote)
     });
-    const data = await res.json();
-    console.log("Quote posted to server:", data);
+    console.log("Quote posted to server:", quote);
   } catch (err) {
-    console.error("Error posting quote:", err);
+    console.error("Failed to post quote:", err);
   }
 }
 
-// Sync with server periodically
-async function syncWithServer() {
+// Main sync function
+async function syncQuotes() {
   updateSyncStatus("Syncing...", "blue");
   try {
     const serverQuotes = await fetchQuotesFromServer();
 
-    // Conflict resolution: server version wins
+    // Conflict resolution: server version overwrites local
     serverQuotes.forEach(sq => {
       const idx = quotes.findIndex(q => q.id === sq.id);
-      if (idx >= 0) quotes[idx] = sq;
-      else quotes.push(sq);
+      if (idx >= 0) {
+        quotes[idx] = sq;
+        console.warn("Conflict resolved: Server version replaced local version", sq);
+      } else {
+        quotes.push(sq);
+      }
     });
 
     saveQuotes();
@@ -275,7 +285,7 @@ function init() {
   showRandomQuote();
 
   // Periodic sync every 30 seconds
-  setInterval(syncWithServer, 30000);
+  setInterval(syncQuotes, 30000);
 }
 
 // -----------------------------
