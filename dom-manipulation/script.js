@@ -198,29 +198,37 @@ function importFromJsonFile(event) {
 // -----------------------------
 // 🛰️ Step 3: Syncing with Server
 // -----------------------------
-async function syncWithServer() {
-  updateSyncStatus("Syncing...", "blue");
+async function fetchQuotesFromServer() {
   try {
-    // Simulate fetching quotes from server
-    const res = await fetch(SERVER_URL);
-    const serverData = await res.json();
+    const response = await fetch(SERVER_URL);
+    const data = await response.json();
 
-    // Convert server posts to mock quotes (simulate)
-    const serverQuotes = serverData.slice(0, 5).map((p, i) => ({
+    // Simulate converting server data to quote format
+    const serverQuotes = data.slice(0, 5).map((p, i) => ({
       id: p.id,
       text: p.title,
       category: ["Motivation", "Philosophy", "Education", "Programming"][i % 4],
       updatedAt: Date.now()
     }));
 
-    // Conflict resolution: server wins if same id
-    const localIds = quotes.map(q => q.id);
+    return serverQuotes;
+  } catch (error) {
+    console.error("Error fetching quotes from server:", error);
+    return [];
+  }
+}
+
+async function syncWithServer() {
+  updateSyncStatus("Syncing...", "blue");
+  try {
+    const serverQuotes = await fetchQuotesFromServer();
+
+    // Conflict resolution: server version wins
     serverQuotes.forEach(sq => {
       const idx = quotes.findIndex(q => q.id === sq.id);
       if (idx >= 0) {
-        // Conflict resolution rule
         quotes[idx] = sq;
-        console.warn("Conflict resolved: Server quote replaced local version", sq);
+        console.warn("Conflict resolved: Server version replaced local version", sq);
       } else {
         quotes.push(sq);
       }
@@ -235,7 +243,6 @@ async function syncWithServer() {
     updateSyncStatus("Sync failed ❌", "red");
   }
 }
-
 // -----------------------------
 // Initialization
 // -----------------------------
