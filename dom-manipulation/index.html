@@ -9,17 +9,31 @@
   <body>
     <h1>Dynamic Quote Generator</h1>
 
+    <!-- Category Filter Dropdown -->
+    <div>
+      <label for="categoryFilter">Filter by Category:</label>
+      <select id="categoryFilter" onchange="filterQuotes()">
+        <option value="all">All Categories</option>
+      </select>
+    </div>
+
+    <!-- Quote Container (Filtered Quotes Appear Here) -->
+    <div id="quoteContainer"></div>
+
+    <!-- Existing Category Selector (if used for adding new quotes) -->
     <div>
       <label for="categorySelect">Select Category:</label>
       <select id="categorySelect"></select>
     </div>
 
+    <!-- Quote Display Section -->
     <div id="quoteDisplay" class="quote-box"></div>
 
+    <!-- Button to Show New Quote -->
     <button id="newQuote">Show New Quote</button>
 
     <!-- Export / Import Controls -->
-    <div style="margin-top:20px;">
+    <div style="margin-top: 20px;">
       <button id="exportBtn">Export Quotes (JSON)</button>
       <input type="file" id="importFile" accept=".json" />
     </div>
